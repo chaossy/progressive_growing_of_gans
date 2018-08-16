@@ -595,6 +595,53 @@ def create_celebahq(tfrecord_dir, celeba_dir, delta_dir, num_threads=4, num_task
 
 #----------------------------------------------------------------------------
 
+def create_jewelry(tfrecord_dir, jewelry_dir):
+    print('Loading JEWELRY from "%s"' % jewelry_dir)
+    import cv2
+    images = []
+    labels = []
+    # for batch in range(1, 6):
+    #     with open(os.path.join(cifar10_dir, 'data_batch_%d' % batch), 'rb') as file:
+    #         data = pickle.load(file, encoding='latin1')
+    #     images.append(data['data'].reshape(-1, 3, 32, 32))
+    #     labels.append(data['labels'])
+    for _, _, filenames in os.walk(jewelry_dir):
+        for _, filename in enumerate(filenames):
+            # info = ImageInfo()
+            filepath = os.path.join(jewelry_dir, filename)
+            im = cv2.imread(filepath)
+            if im is None:
+                continue
+            im_h, im_w, _ = im.shape
+            im = np.transpose(im, (2, 1, 0))
+            im = np.expand_dims(im, axis=0)
+            # info.size = im_w, im_h
+            # info.bytes = os.path.getsize(filepath)
+            # for i, (path, _info) in enumerate(_infos):
+            #     if info == _info and im_h > 10 and im_w > 10:
+            #         print('duplicate: {} --- {}'.format(path, filepath))
+            #         cv2.imshow('', im)
+            #         # cv2.waitKey(0)
+            #         # cv2.destroyAllWindows()
+            # _infos.append((filepath, info))
+            images.append(im)
+    images = np.concatenate(images)
+    # labels = np.concatenate(labels)
+    # assert images.shape == (50000, 3, 32, 32) and images.dtype == np.uint8
+    # assert labels.shape == (50000,) and labels.dtype == np.int64
+    # assert np.min(images) == 0 and np.max(images) == 255
+    # assert np.min(labels) == 0 and np.max(labels) == 9
+    # onehot = np.zeros((labels.size, np.max(labels) + 1), dtype=np.float32)
+    # onehot[np.arange(labels.size), labels] = 1.0
+
+    with TFRecordExporter(tfrecord_dir, images.shape[0]) as tfr:
+        order = tfr.choose_shuffled_order()
+        for idx in range(order.size):
+            tfr.add_image(images[order[idx]])
+        # tfr.add_labels(onehot[order])
+
+#----------------------------------------------------------------------------
+
 def create_from_images(tfrecord_dir, image_dir, shuffle):
     print('Loading images from "%s"' % image_dir)
     image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
@@ -726,6 +773,10 @@ def execute_cmdline(argv):
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'hdf5_filename',    help='HDF5 archive containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+
+    p = add_command(    'create_jewelry',   'Create dataset for JEWELRY.', 'create_jewelry datasets/jewelry datasets/jewelry')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'jewelry_dir',      help='Directory containing JEWELRY')
 
     args = parser.parse_args(argv[1:] if len(argv) > 1 else ['-h'])
     func = globals()[args.command]
